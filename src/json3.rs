@@ -1,4 +1,13 @@
-use crate::{MAX_REPEAT, MAX_DEPTH, Rng, Generate};
+//! JSON Generator based on JSON ANTLR4
+//! https://github.com/antlr/grammars-v4/blob/master/json/JSON.g4
+//!
+//! Tries to be as 1:1 to the ANTLR4 as possible
+//!
+//! Third iteration:
+//!
+//! Enums instead of structs so that each Object can't be instantiated
+//! and can only be called via generate.
+use crate::{Generate, Rng, MAX_DEPTH, MAX_REPEAT};
 
 #[derive(Debug)]
 pub enum Exp {}
@@ -7,12 +16,12 @@ impl Generate for Exp {
         *depth += 1;
         //print!("in Exp\n");
         // : [Ee] [+\-]? INT
-        // [Ee] 
+        // [Ee]
         let mut res = String::new();
         match rng.next() % 2 {
             0 => res.push('e'),
             1 => res.push('E'),
-            _ => unreachable!()
+            _ => unreachable!(),
         }
 
         // [+\-]?
@@ -20,7 +29,7 @@ impl Generate for Exp {
             match rng.next() % 2 {
                 0 => res.push('+'),
                 1 => res.push('-'),
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         }
 
@@ -40,7 +49,7 @@ impl Generate for Int {
         // '0' | [1-9] [0-9]*
         let mut res = String::new();
         match rng.next() % 2 {
-            // '0' 
+            // '0'
             0 => res.push('0'),
             1 => {
                 // [1-9] [0-9]*
@@ -48,8 +57,8 @@ impl Generate for Int {
                 for _ in 0..(rng.next() % MAX_REPEAT) {
                     res.push(('0' as u8 + (rng.next() % 10) as u8) as char)
                 }
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
 
         res
@@ -65,14 +74,14 @@ impl Generate for Number {
         // '-'? INT ('.' [0-9] +)? EXP?
         let mut res = String::new();
 
-        // '-'? 
+        // '-'?
         if rng.next() % 2 == 1 {
             res.push('-');
         }
 
         // INT
         res.push_str(&Int::generate(rng, depth));
-        // ('.' [0-9]+)? 
+        // ('.' [0-9]+)?
         if rng.next() % 2 == 1 {
             res.push('.');
             res.push(('0' as u8 + (rng.next() % 10) as u8) as char);
@@ -97,8 +106,10 @@ impl Generate for Hex {
         *depth += 1;
         ////print!("in Hex\n");
         // : [0-9a-fA-F]
-        let values = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
-            'a', 'b', 'c', 'd', 'e', 'f', 'A', 'B', 'C', 'D', 'E', 'F']; 
+        let values = [
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'A',
+            'B', 'C', 'D', 'E', 'F',
+        ];
         values[rng.next() as usize % values.len()].to_string()
     }
 }
@@ -133,7 +144,6 @@ impl Generate for SafeCodePoint {
             // Ignore \u0000..\u001f and " and \
             if num < 0x20 || num == ('"' as u8 as u32) || num == ('\\' as u8 as u32) {
                 continue;
-
             }
 
             // Attempt to make the character from the random number
@@ -155,22 +165,22 @@ impl Generate for Escape {
         *depth += 1;
         //print!("in escapoe\n");
         // '\\' (["\\/bfnrt] | UNICODE)
-        let mut value = String::new(); 
+        let mut value = String::new();
 
-        // '\\' 
+        // '\\'
         value.push('\\');
         match rng.next() % 2 {
             // | UNICODE)
             0 => value.push_str(&Unicode::generate(rng, depth)),
             1 => {
-                // (["\\/bfnrt] 
+                // (["\\/bfnrt]
                 let values = ['"', '\\', '/', 'b', 'f', 'n', 'r', 't'];
                 value.push(values[rng.next() as usize % values.len()]);
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
 
-        value 
+        value
     }
 }
 
@@ -187,12 +197,12 @@ impl Generate for JsonString {
                 match rng.next() % 2 {
                     0 => value.push_str(&Escape::generate(rng, depth)),
                     1 => value.push_str(&SafeCodePoint::generate(rng, depth)),
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 }
             }
         }
         value.push('"');
-        value 
+        value
     }
 }
 
@@ -213,7 +223,7 @@ impl Generate for JsonValue {
             98 => "true".to_string(),
             99 => "false".to_string(),
             100 => "null".to_string(),
-            _ => unreachable!()
+            _ => unreachable!(),
         };
         value
     }
@@ -228,7 +238,7 @@ impl Generate for JsonPair {
         value.push_str(&JsonString::generate(rng, depth));
         value.push(':');
         value.push_str(&JsonValue::generate(rng, depth));
-        value 
+        value
     }
 }
 

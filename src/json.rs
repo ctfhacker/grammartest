@@ -1,9 +1,22 @@
-use core::sync::atomic::{Ordering, AtomicU64};
+//! JSON Generator based on JSON ANTLR4
+//! https://github.com/antlr/grammars-v4/blob/master/json/JSON.g4
+//!
+//! Tries to be as 1:1 to the ANTLR4 as possible
+//!
+//! First iteration (Not used anymore):
+//!
+//! Structs for each left hand object.
+//! Global random number generator
+//! Using Rust's Default trait to generate all strings
+
 use crate::{MAX_REPEAT, MAX_STEPS};
+use core::sync::atomic::{AtomicU64, Ordering};
 
 fn rdrand() -> u64 {
     let res: u64;
-    unsafe { asm!("rdrand $0" : "=r"(res)); }
+    unsafe {
+        asm!("rdrand $0" : "=r"(res));
+    }
     res
 }
 
@@ -23,17 +36,19 @@ fn rand() -> usize {
 }
 
 #[derive(Debug)]
-pub struct Exp { pub value: String } 
+pub struct Exp {
+    pub value: String,
+}
 impl Default for Exp {
     fn default() -> Exp {
         let _recursion = COUNT.fetch_add(1, Ordering::SeqCst);
         // : [Ee] [+\-]? INT
-        // [Ee] 
+        // [Ee]
         let mut res = String::with_capacity(512);
         match rand() % 2 {
             0 => res.push('e'),
             1 => res.push('E'),
-            _ => unreachable!()
+            _ => unreachable!(),
         }
 
         // [+\-]?
@@ -41,7 +56,7 @@ impl Default for Exp {
             match rand() % 2 {
                 0 => res.push('+'),
                 1 => res.push('-'),
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         }
 
@@ -58,14 +73,16 @@ impl ToString for Exp {
 }
 
 #[derive(Debug)]
-pub struct Int { pub value: String } 
+pub struct Int {
+    pub value: String,
+}
 impl Default for Int {
     fn default() -> Int {
         let _recursion = COUNT.fetch_add(1, Ordering::SeqCst);
         // '0' | [1-9] [0-9]*
         let mut res = String::with_capacity(512);
         match rand() % 2 {
-            // '0' 
+            // '0'
             0 => res.push('0'),
             1 => {
                 // [1-9] [0-9]*
@@ -73,8 +90,8 @@ impl Default for Int {
                 for _i in 0..(rand() % MAX_REPEAT) {
                     res.push(('0' as u8 + (rand() % 10) as u8) as char)
                 }
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
 
         Int { value: res }
@@ -82,21 +99,23 @@ impl Default for Int {
 }
 
 #[derive(Debug)]
-pub struct Number { pub value: String } 
+pub struct Number {
+    pub value: String,
+}
 impl Default for Number {
     fn default() -> Number {
         let _recursion = COUNT.fetch_add(1, Ordering::SeqCst);
         // '-'? INT ('.' [0-9] +)? EXP?
         let mut res = String::with_capacity(512);
 
-        // '-'? 
+        // '-'?
         if rand() % 2 == 1 {
             res.push('-');
         }
 
         // INT
         res.push_str(&Int::default().value);
-        // ('.' [0-9]+)? 
+        // ('.' [0-9]+)?
         if rand() % 2 == 1 {
             res.push('.');
             res.push(('0' as u8 + (rand() % 10) as u8) as char);
@@ -115,20 +134,26 @@ impl Default for Number {
 }
 
 #[derive(Debug)]
-pub struct Hex { pub value: String } 
+pub struct Hex {
+    pub value: String,
+}
 impl Default for Hex {
     fn default() -> Hex {
         let _recursion = COUNT.fetch_add(1, Ordering::SeqCst);
         // : [0-9a-fA-F]
-        let values = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
-            'a', 'b', 'c', 'd', 'e', 'f', 'A', 'B', 'C', 'D', 'E', 'F']; 
+        let values = [
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'A',
+            'B', 'C', 'D', 'E', 'F',
+        ];
         let value = values[rand() % values.len()].to_string();
         Hex { value }
     }
 }
 
 #[derive(Debug)]
-pub struct Unicode { pub value: String } 
+pub struct Unicode {
+    pub value: String,
+}
 
 impl Default for Unicode {
     fn default() -> Unicode {
@@ -143,7 +168,9 @@ impl Default for Unicode {
 }
 
 #[derive(Debug)]
-pub struct SafeCodePoint { pub value: String } 
+pub struct SafeCodePoint {
+    pub value: String,
+}
 impl Default for SafeCodePoint {
     fn default() -> SafeCodePoint {
         let _recursion = COUNT.fetch_add(1, Ordering::SeqCst);
@@ -156,7 +183,6 @@ impl Default for SafeCodePoint {
             // Ignore \u0000..\u001f and " and \
             if num < 0x20 || num == ('"' as u8 as u32) || num == ('\\' as u8 as u32) {
                 continue;
-
             }
 
             // Attempt to make the character from the random number
@@ -167,29 +193,33 @@ impl Default for SafeCodePoint {
                 break;
             }
         }
-        SafeCodePoint { value: value.unwrap().to_string() }
+        SafeCodePoint {
+            value: value.unwrap().to_string(),
+        }
     }
 }
 
 #[derive(Debug)]
-pub struct Escape { pub value: String } 
+pub struct Escape {
+    pub value: String,
+}
 impl Default for Escape {
     fn default() -> Escape {
         let _recursion = COUNT.fetch_add(1, Ordering::SeqCst);
         // '\\' (["\\/bfnrt] | UNICODE)
-        let mut value = String::with_capacity(512); 
+        let mut value = String::with_capacity(512);
 
-        // '\\' 
+        // '\\'
         value.push('\\');
         match rand() % 2 {
             // | UNICODE)
             0 => value.push_str(&Unicode::default().value),
             1 => {
-                // (["\\/bfnrt] 
+                // (["\\/bfnrt]
                 let values = ['"', '\\', '/', 'b', 'f', 'n', 'r', 't'];
                 value.push(values[rand() % values.len()]);
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
 
         Escape { value }
@@ -197,7 +227,9 @@ impl Default for Escape {
 }
 
 #[derive(Debug)]
-pub struct JsonString { pub value: String } 
+pub struct JsonString {
+    pub value: String,
+}
 impl Default for JsonString {
     fn default() -> JsonString {
         let recursion = COUNT.fetch_add(1, Ordering::SeqCst);
@@ -208,7 +240,7 @@ impl Default for JsonString {
                 match rand() % 2 {
                     0 => value.push_str(&Escape::default().value),
                     1 => value.push_str(&SafeCodePoint::default().value),
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 }
             }
         }
@@ -218,12 +250,16 @@ impl Default for JsonString {
 }
 
 #[derive(Debug)]
-pub struct JsonValue { pub value: String } 
+pub struct JsonValue {
+    pub value: String,
+}
 impl Default for JsonValue {
     fn default() -> JsonValue {
         let recursion = COUNT.fetch_add(1, Ordering::SeqCst);
         if recursion >= MAX_STEPS {
-            return JsonValue { value: Number::default().value };
+            return JsonValue {
+                value: Number::default().value,
+            };
         }
         let value = match rand() % 100 {
             0..15 => JsonString::default().value,
@@ -233,14 +269,16 @@ impl Default for JsonValue {
             98 => "true".to_string(),
             99 => "false".to_string(),
             100 => "null".to_string(),
-            _ => unreachable!()
+            _ => unreachable!(),
         };
         JsonValue { value }
     }
 }
 
 #[derive(Debug)]
-pub struct JsonPair { pub value: String } 
+pub struct JsonPair {
+    pub value: String,
+}
 impl Default for JsonPair {
     fn default() -> JsonPair {
         let _recursion = COUNT.fetch_add(1, Ordering::SeqCst);
@@ -253,7 +291,9 @@ impl Default for JsonPair {
 }
 
 #[derive(Debug)]
-pub struct JsonArray { pub value: String } 
+pub struct JsonArray {
+    pub value: String,
+}
 impl Default for JsonArray {
     fn default() -> JsonArray {
         let recursion = COUNT.fetch_add(1, Ordering::SeqCst);
@@ -280,7 +320,9 @@ impl Default for JsonArray {
 }
 
 #[derive(Debug)]
-pub struct JsonObject { pub value: String } 
+pub struct JsonObject {
+    pub value: String,
+}
 impl Default for JsonObject {
     fn default() -> JsonObject {
         let recursion = COUNT.fetch_add(1, Ordering::SeqCst);
@@ -307,10 +349,14 @@ impl Default for JsonObject {
 }
 
 #[derive(Debug)]
-pub struct Json { pub value: String } 
+pub struct Json {
+    pub value: String,
+}
 impl Default for Json {
     fn default() -> Json {
         let _recursion = COUNT.fetch_add(1, Ordering::SeqCst);
-        Json { value: JsonValue::default().value }
+        Json {
+            value: JsonValue::default().value,
+        }
     }
 }
