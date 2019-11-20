@@ -1,10 +1,10 @@
-use crate::{MAX_REPEAT, MAX_STEPS, Rng, Generate};
+use crate::{MAX_REPEAT, MAX_DEPTH, Rng, Generate};
 
 #[derive(Debug)]
 pub enum Exp {}
 impl Generate for Exp {
-    fn generate(rng: &mut Rng, recursion: &mut u64) -> String {
-        *recursion += 1;
+    fn generate(rng: &mut Rng, depth: &mut u64) -> String {
+        *depth += 1;
         //print!("in Exp\n");
         // : [Ee] [+\-]? INT
         // [Ee] 
@@ -25,7 +25,7 @@ impl Generate for Exp {
         }
 
         // INT
-        res.push_str(&Int::generate(rng, recursion));
+        res.push_str(&Int::generate(rng, depth));
 
         res
     }
@@ -34,8 +34,8 @@ impl Generate for Exp {
 #[derive(Debug)]
 pub enum Int {}
 impl Generate for Int {
-    fn generate(rng: &mut Rng, recursion: &mut u64) -> String {
-        *recursion += 1;
+    fn generate(rng: &mut Rng, depth: &mut u64) -> String {
+        *depth += 1;
         //print!("in Int\n");
         // '0' | [1-9] [0-9]*
         let mut res = String::new();
@@ -59,8 +59,8 @@ impl Generate for Int {
 #[derive(Debug)]
 pub enum Number {}
 impl Generate for Number {
-    fn generate(rng: &mut Rng, recursion: &mut u64) -> String {
-        *recursion += 1;
+    fn generate(rng: &mut Rng, depth: &mut u64) -> String {
+        *depth += 1;
         //print!("in Num\n");
         // '-'? INT ('.' [0-9] +)? EXP?
         let mut res = String::new();
@@ -71,7 +71,7 @@ impl Generate for Number {
         }
 
         // INT
-        res.push_str(&Int::generate(rng, recursion));
+        res.push_str(&Int::generate(rng, depth));
         // ('.' [0-9]+)? 
         if rng.next() % 2 == 1 {
             res.push('.');
@@ -83,7 +83,7 @@ impl Generate for Number {
 
         // EXP?
         if rng.next() % 2 == 1 {
-            res.push_str(&Exp::generate(rng, recursion));
+            res.push_str(&Exp::generate(rng, depth));
         }
 
         res
@@ -93,8 +93,8 @@ impl Generate for Number {
 #[derive(Debug)]
 pub enum Hex {}
 impl Generate for Hex {
-    fn generate(rng: &mut Rng, recursion: &mut u64) -> String {
-        *recursion += 1;
+    fn generate(rng: &mut Rng, depth: &mut u64) -> String {
+        *depth += 1;
         ////print!("in Hex\n");
         // : [0-9a-fA-F]
         let values = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
@@ -106,14 +106,14 @@ impl Generate for Hex {
 #[derive(Debug)]
 pub enum Unicode {}
 impl Generate for Unicode {
-    fn generate(rng: &mut Rng, recursion: &mut u64) -> String {
-        *recursion += 1;
+    fn generate(rng: &mut Rng, depth: &mut u64) -> String {
+        *depth += 1;
         //print!("in Uni\n");
         let mut value = "u".to_string();
-        value.push_str(&Hex::generate(rng, recursion));
-        value.push_str(&Hex::generate(rng, recursion));
-        value.push_str(&Hex::generate(rng, recursion));
-        value.push_str(&Hex::generate(rng, recursion));
+        value.push_str(&Hex::generate(rng, depth));
+        value.push_str(&Hex::generate(rng, depth));
+        value.push_str(&Hex::generate(rng, depth));
+        value.push_str(&Hex::generate(rng, depth));
         value
     }
 }
@@ -121,8 +121,8 @@ impl Generate for Unicode {
 #[derive(Debug)]
 pub enum SafeCodePoint {}
 impl Generate for SafeCodePoint {
-    fn generate(rng: &mut Rng, recursion: &mut u64) -> String {
-        *recursion += 1;
+    fn generate(rng: &mut Rng, depth: &mut u64) -> String {
+        *depth += 1;
         //print!("in safecode\n");
         let mut num;
         let mut value;
@@ -151,8 +151,8 @@ impl Generate for SafeCodePoint {
 #[derive(Debug)]
 pub enum Escape {}
 impl Generate for Escape {
-    fn generate(rng: &mut Rng, recursion: &mut u64) -> String {
-        *recursion += 1;
+    fn generate(rng: &mut Rng, depth: &mut u64) -> String {
+        *depth += 1;
         //print!("in escapoe\n");
         // '\\' (["\\/bfnrt] | UNICODE)
         let mut value = String::new(); 
@@ -161,7 +161,7 @@ impl Generate for Escape {
         value.push('\\');
         match rng.next() % 2 {
             // | UNICODE)
-            0 => value.push_str(&Unicode::generate(rng, recursion)),
+            0 => value.push_str(&Unicode::generate(rng, depth)),
             1 => {
                 // (["\\/bfnrt] 
                 let values = ['"', '\\', '/', 'b', 'f', 'n', 'r', 't'];
@@ -177,16 +177,16 @@ impl Generate for Escape {
 #[derive(Debug)]
 pub enum JsonString {}
 impl Generate for JsonString {
-    fn generate(rng: &mut Rng, recursion: &mut u64) -> String {
-        *recursion += 1;
+    fn generate(rng: &mut Rng, depth: &mut u64) -> String {
+        *depth += 1;
         //print!("in jsonstring\n");
         let mut value = String::new();
         value.push('"');
-        if *recursion <= MAX_STEPS {
+        if *depth <= MAX_DEPTH {
             for _ in 0..(rng.next() % MAX_REPEAT) {
                 match rng.next() % 2 {
-                    0 => value.push_str(&Escape::generate(rng, recursion)),
-                    1 => value.push_str(&SafeCodePoint::generate(rng, recursion)),
+                    0 => value.push_str(&Escape::generate(rng, depth)),
+                    1 => value.push_str(&SafeCodePoint::generate(rng, depth)),
                     _ => unreachable!()
                 }
             }
@@ -199,17 +199,17 @@ impl Generate for JsonString {
 #[derive(Debug)]
 pub enum JsonValue {}
 impl Generate for JsonValue {
-    fn generate(rng: &mut Rng, recursion: &mut u64) -> String {
-        *recursion += 1;
+    fn generate(rng: &mut Rng, depth: &mut u64) -> String {
+        *depth += 1;
         //print!("in jsonvalue\n");
-        if *recursion >= MAX_STEPS {
-            return Number::generate(rng, recursion);
+        if *depth >= MAX_DEPTH {
+            return Number::generate(rng, depth);
         }
         let value = match rng.next() % 100 {
-            0..15 => JsonString::generate(rng, recursion),
-            15..30 => Number::generate(rng, recursion),
-            30..60 => JsonObject::generate(rng, recursion),
-            60..98 => JsonArray::generate(rng, recursion),
+            0..15 => JsonString::generate(rng, depth),
+            15..30 => Number::generate(rng, depth),
+            30..60 => JsonObject::generate(rng, depth),
+            60..98 => JsonArray::generate(rng, depth),
             98 => "true".to_string(),
             99 => "false".to_string(),
             100 => "null".to_string(),
@@ -222,12 +222,12 @@ impl Generate for JsonValue {
 #[derive(Debug)]
 pub enum JsonPair {}
 impl Generate for JsonPair {
-    fn generate(rng: &mut Rng, recursion: &mut u64) -> String {
-        *recursion += 1;
+    fn generate(rng: &mut Rng, depth: &mut u64) -> String {
+        *depth += 1;
         let mut value = String::new();
-        value.push_str(&JsonString::generate(rng, recursion));
+        value.push_str(&JsonString::generate(rng, depth));
         value.push(':');
-        value.push_str(&JsonValue::generate(rng, recursion));
+        value.push_str(&JsonValue::generate(rng, depth));
         value 
     }
 }
@@ -235,8 +235,8 @@ impl Generate for JsonPair {
 #[derive(Debug)]
 pub enum JsonArray {}
 impl Generate for JsonArray {
-    fn generate(rng: &mut Rng, recursion: &mut u64) -> String {
-        *recursion += 1;
+    fn generate(rng: &mut Rng, depth: &mut u64) -> String {
+        *depth += 1;
         //print!("in jsonarray\n");
         let mut value = String::new();
         match rng.next() % 10 {
@@ -246,11 +246,11 @@ impl Generate for JsonArray {
             }
             _ => {
                 value.push('[');
-                value.push_str(&JsonValue::generate(rng, recursion));
-                if *recursion <= MAX_STEPS {
+                value.push_str(&JsonValue::generate(rng, depth));
+                if *depth <= MAX_DEPTH {
                     for _ in 0..(rng.next() % MAX_REPEAT) {
                         value.push(',');
-                        value.push_str(&JsonValue::generate(rng, recursion));
+                        value.push_str(&JsonValue::generate(rng, depth));
                     }
                 }
                 value.push(']');
@@ -263,8 +263,8 @@ impl Generate for JsonArray {
 #[derive(Debug)]
 pub enum JsonObject {}
 impl Generate for JsonObject {
-    fn generate(rng: &mut Rng, recursion: &mut u64) -> String {
-        *recursion += 1;
+    fn generate(rng: &mut Rng, depth: &mut u64) -> String {
+        *depth += 1;
         //print!("in jsonoby\n");
         let mut value = String::new();
         match rng.next() % 10 {
@@ -274,11 +274,11 @@ impl Generate for JsonObject {
             }
             _ => {
                 value.push('{');
-                value.push_str(&JsonPair::generate(rng, recursion));
-                if *recursion <= MAX_STEPS {
+                value.push_str(&JsonPair::generate(rng, depth));
+                if *depth <= MAX_DEPTH {
                     for _ in 0..(rng.next() % MAX_REPEAT) {
                         value.push(',');
-                        value.push_str(&JsonPair::generate(rng, recursion));
+                        value.push_str(&JsonPair::generate(rng, depth));
                     }
                 }
                 value.push('}');
@@ -291,9 +291,9 @@ impl Generate for JsonObject {
 #[derive(Debug)]
 pub enum Json {}
 impl Generate for Json {
-    fn generate(rng: &mut Rng, recursion: &mut u64) -> String {
-        *recursion += 1;
+    fn generate(rng: &mut Rng, depth: &mut u64) -> String {
+        *depth += 1;
         //print!("in json\n");
-        JsonValue::generate(rng, recursion)
+        JsonValue::generate(rng, depth)
     }
 }
