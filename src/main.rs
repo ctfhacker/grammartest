@@ -29,58 +29,6 @@ pub trait Generate {
 }
 
 fn main() {
-    /*
-    if true {
-        let mut res = HashSet::new();
-        loop {
-            COUNT.store(0, Ordering::SeqCst);
-            if true {
-                if res.len() % 100000 == 0 {
-                    print!("Generated: {}\n", res.len());
-                }
-            }
-
-            // Generate and attempt to add the testcase to a HashSet,
-            // which will implicitly dedup for us
-            res.insert(Json::default().value);
-
-            // If we hit our maximum of 1M test cases, break
-            if res.len() >= 1000000 {
-                break
-            }
-        }
-
-        print!("Generated: {}\n", res.len());
-    }
-    */
-
-    /*
-    // let mut res = HashSet::new();
-    let mut rng = Rng::new();
-    let mut res = Vec::new();
-    let mut depth = 0;
-    let mut start = std::time::Instant::now();
-
-    loop {
-        // Generate and attempt to add the testcase to a HashSet,
-        // which will implicitly dedup for us
-        // res.insert(Json::default().value);
-        let r = Json::generate(&mut rng, &mut depth);
-        res.push(r);
-        if start.elapsed() > std::time::Duration::new(1, 0) {
-            print!(
-                "Depth: {} -- {:10.3} KB/s\n",
-                MAX_DEPTH,
-                res.iter().map(|x| x.len()).sum::<usize>() as f64 / 1000.0
-            );
-            res.clear();
-            start = std::time::Instant::now();
-        }
-    }
-    */
-
-    // Multicore support of generating
-
     // Channel used to send completed work out of the threads to the collector
     let (tx, rx) = channel();
 
