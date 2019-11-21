@@ -9,12 +9,20 @@
 //! and can only be called via generate.
 use crate::{Generate, Rng, MAX_DEPTH, MAX_REPEAT};
 
+/// Exponent object
+///
+/// ANTLR4:
+/// fragment EXP
+///    : [Ee] [+\-]? INT
+///
+/// Example generations:
+///
+/// e0, E8151, E+0, E-8, E-5558
 #[derive(Debug)]
 pub enum Exp {}
 impl Generate for Exp {
     fn generate(rng: &mut Rng, depth: &mut u64) -> String {
         *depth += 1;
-        //print!("in Exp\n");
         // : [Ee] [+\-]? INT
         // [Ee]
         let mut res = String::new();
@@ -40,12 +48,20 @@ impl Generate for Exp {
     }
 }
 
+/// Integer object
+///
+/// ANTLR4:
+/// fragment INT
+///    : '0' | [1-9] [0-9]*
+///
+/// Example generations:
+///
+/// 0, 4632, 4080, 7849, 33129, 759739
 #[derive(Debug)]
 pub enum Int {}
 impl Generate for Int {
     fn generate(rng: &mut Rng, depth: &mut u64) -> String {
         *depth += 1;
-        //print!("in Int\n");
         // '0' | [1-9] [0-9]*
         let mut res = String::new();
         match rng.next() % 2 {
@@ -65,12 +81,22 @@ impl Generate for Int {
     }
 }
 
+/// Number object
+///
+/// ANTLR4:
+/// NUMBER
+///   : '-'? INT ('.' [0-9] +)? EXP?
+///
+/// Example generations:
+///
+/// 157.038063E0, -0.57248E+48003, 0.577413E78
+/// -45506644e+0, -0.8094341
+
 #[derive(Debug)]
 pub enum Number {}
 impl Generate for Number {
     fn generate(rng: &mut Rng, depth: &mut u64) -> String {
         *depth += 1;
-        //print!("in Num\n");
         // '-'? INT ('.' [0-9] +)? EXP?
         let mut res = String::new();
 
@@ -99,12 +125,19 @@ impl Generate for Number {
     }
 }
 
+/// Hex object
+///
+/// ANTLR4:
+/// fragment HEX
+///    : [0-9a-fA-F]
+///
+/// Example generations:
+/// f, F, 1, E, c
 #[derive(Debug)]
 pub enum Hex {}
 impl Generate for Hex {
     fn generate(rng: &mut Rng, depth: &mut u64) -> String {
         *depth += 1;
-        ////print!("in Hex\n");
         // : [0-9a-fA-F]
         let values = [
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'A',
@@ -114,12 +147,19 @@ impl Generate for Hex {
     }
 }
 
+/// Unicode object
+///
+/// ANTLR4:
+/// fragment UNICODE
+///    : 'u' HEX HEX HEX HEX
+///
+/// Example generations:
+/// u56fc, uB9ce, u24cE, ueEf7, u1189
 #[derive(Debug)]
 pub enum Unicode {}
 impl Generate for Unicode {
     fn generate(rng: &mut Rng, depth: &mut u64) -> String {
         *depth += 1;
-        //print!("in Uni\n");
         let mut value = "u".to_string();
         value.push_str(&Hex::generate(rng, depth));
         value.push_str(&Hex::generate(rng, depth));
@@ -129,12 +169,19 @@ impl Generate for Unicode {
     }
 }
 
+/// SafeCodePoint object
+///
+/// ANTLR4:
+/// fragment SAFECODEPOINT
+///    : ~ ["\\\u0000-\u001F]
+///
+/// Example generations:
+/// 񙸸 񖢋 񸼱 󰜫 񠝨
 #[derive(Debug)]
 pub enum SafeCodePoint {}
 impl Generate for SafeCodePoint {
     fn generate(rng: &mut Rng, depth: &mut u64) -> String {
         *depth += 1;
-        //print!("in safecode\n");
         let mut num;
         let mut value;
         loop {
@@ -158,12 +205,19 @@ impl Generate for SafeCodePoint {
     }
 }
 
+/// Escape object
+///
+/// ANTLR4:
+/// fragment ESC
+///    : '\\' (["\\/bfnrt] | UNICODE)
+///
+/// Example generations:
+/// \f, \n, \u6470, \u936c, \n
 #[derive(Debug)]
 pub enum Escape {}
 impl Generate for Escape {
     fn generate(rng: &mut Rng, depth: &mut u64) -> String {
         *depth += 1;
-        //print!("in escapoe\n");
         // '\\' (["\\/bfnrt] | UNICODE)
         let mut value = String::new();
 
@@ -184,12 +238,19 @@ impl Generate for Escape {
     }
 }
 
+/// JsonString object
+///
+/// ANTLR4:
+/// STRING
+///   : '"' (ESC | SAFECODEPOINT)* '"'
+///
+/// Example generations:
+/// "򀺂\u0d07", "\t\ueBCD𦏔񽫀򚠬\/\b", "\r\u1bC4񘿥񇧅񈨋򣬦\b", "򶯒\u99fd\u456e\u2bA2󦑞\n", "\t\bἣ򗎹\u33ee",
 #[derive(Debug)]
 pub enum JsonString {}
 impl Generate for JsonString {
     fn generate(rng: &mut Rng, depth: &mut u64) -> String {
         *depth += 1;
-        //print!("in jsonstring\n");
         let mut value = String::new();
         value.push('"');
         if *depth <= MAX_DEPTH {
@@ -206,12 +267,27 @@ impl Generate for JsonString {
     }
 }
 
+/// JsonValue object
+///
+/// ANTLR4:
+/// value
+///    : STRING
+///    | NUMBER
+///    | obj
+///    | array
+///    | 'true'
+///    | 'false'
+///    | 'null'
+///
+/// Example generations:
+/// [true,-0,{},-0.4,4234], 6.6e-36761067, {"\b\uACbA񍥨򵄋򐹮":-6682.7E0}, {"\b􌣴󰶭":-7E+0},
+/// {"\r\n󧂭\u2Dbc\uEDf7\u3d06":-0.33849685}
 #[derive(Debug)]
 pub enum JsonValue {}
+
 impl Generate for JsonValue {
     fn generate(rng: &mut Rng, depth: &mut u64) -> String {
         *depth += 1;
-        //print!("in jsonvalue\n");
         if *depth >= MAX_DEPTH {
             return Number::generate(rng, depth);
         }
@@ -229,6 +305,15 @@ impl Generate for JsonValue {
     }
 }
 
+/// JsonPair object
+///
+/// ANTLR4:
+/// pair
+///    : STRING ':' value
+///
+/// Example generations:
+/// "":{"\ubfbF󙃄":96021392}, "\t񐇺򊲨":[-39733], "":[-0.24791,0.75134,0.44177522,-0e97638860,-4]
+/// "񭞷򁷝":-7E0, "񶐽":[{"":0.8}]
 #[derive(Debug)]
 pub enum JsonPair {}
 impl Generate for JsonPair {
@@ -242,12 +327,20 @@ impl Generate for JsonPair {
     }
 }
 
+/// JsonArray object
+///
+/// ANTLR4:
+/// array
+///    : '[' value (',' value)* ']'
+///    | '[' ']'
+///
+/// Example generations:
+/// [563851], ["\udCFB\ud735"], [[[{"":-71246008.4165}]]], [[[[-81330724]]]], [[]]
 #[derive(Debug)]
 pub enum JsonArray {}
 impl Generate for JsonArray {
     fn generate(rng: &mut Rng, depth: &mut u64) -> String {
         *depth += 1;
-        //print!("in jsonarray\n");
         let mut value = String::new();
         match rng.next() % 10 {
             0 => {
@@ -270,12 +363,20 @@ impl Generate for JsonArray {
     }
 }
 
+/// JsonObject generation
+///
+/// ANTLR4:
+/// obj
+///   : '{' pair (',' pair)* '}'
+///   | '{' '}'
+///
+/// Example generations:
+/// {"":[[0]]}, {"":[{"":0}]}, {"򉺠\b":{"":304}}, {"򌗖򓳝򻚤\\񤧌\f":-0E0}, {"\r":0,"":0E6}
 #[derive(Debug)]
 pub enum JsonObject {}
 impl Generate for JsonObject {
     fn generate(rng: &mut Rng, depth: &mut u64) -> String {
         *depth += 1;
-        //print!("in jsonoby\n");
         let mut value = String::new();
         match rng.next() % 10 {
             0 => {
@@ -298,12 +399,20 @@ impl Generate for JsonObject {
     }
 }
 
+/// Top level JSON object
+///
+/// ANTLR4:
+/// json
+///    : value
+///
+/// Example generations:
+/// ["\uFad0"], [0.7209,-0.85435856,0.6e-7,92.930901,-0.94057E+0,-24E0,-8.0,5903.16e-0], 0e0
+/// -4231186.63066e-6, true
 #[derive(Debug)]
 pub enum Json {}
 impl Generate for Json {
     fn generate(rng: &mut Rng, depth: &mut u64) -> String {
         *depth += 1;
-        //print!("in json\n");
         JsonValue::generate(rng, depth)
     }
 }
