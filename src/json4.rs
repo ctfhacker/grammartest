@@ -131,9 +131,10 @@ impl Generate for Hex {
     fn generate(rng: &mut Rng, depth: &mut u64, buf: &mut Vec<u8>) {
         *depth += 1;
         // : [0-9a-fA-F]
-        let values = [
-            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'A',
-            'B', 'C', 'D', 'E', 'F',
+        static values: [u8; 22] = [
+            '0' as u8, '1' as u8, '2' as u8, '3' as u8, '4' as u8, '5' as u8, '6' as u8, '7' as u8,
+            '8' as u8, '9' as u8, 'a' as u8, 'b' as u8, 'c' as u8, 'd' as u8, 'e' as u8, 'f' as u8,
+            'A' as u8, 'B' as u8, 'C' as u8, 'D' as u8, 'E' as u8, 'F' as u8,
         ];
         buf.push(values[rng.next() as usize % values.len()] as u8);
     }

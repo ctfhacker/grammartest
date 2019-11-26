@@ -1,9 +1,11 @@
+#![feature(duration_float)]
 #![feature(asm)]
 #![feature(exclusive_range_pattern)]
 use std::collections::HashSet;
 
 extern crate lazy_static;
 
+use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::channel;
 use std::sync::Arc;
@@ -15,17 +17,26 @@ use std::thread;
 // mod json2;
 // use json2::*;
 
-pub mod json3;
-use json3::*;
+// pub mod json3;
+// use json3::*;
+//
+pub mod json4;
+use json4::*;
 
 mod rng;
 use rng::Rng;
 
-pub const MAX_REPEAT: usize = 64;
-pub const MAX_DEPTH: u64 = 64;
+pub const MAX_REPEAT: usize = 16;
+pub const MAX_DEPTH: u64 = 8;
 
+/*
 pub trait Generate {
     fn generate(rng: &mut Rng, recursion: &mut u64) -> String;
+}
+*/
+
+pub trait Generate {
+    fn generate(rng: &mut Rng, recursion: &mut u64, buf: &mut Vec<u8>);
 }
 
 fn main() {
@@ -36,10 +47,14 @@ fn main() {
     let die = Arc::new(AtomicBool::new(false));
 
     // Number threads to start
-    let num_cores = 4;
+    let num_cores = 2;
 
     // Number of results to generate
-    let max_results = 1_000_000;
+    let max_results = 10_000_000;
+
+    let mut aux = 0;
+    let start = unsafe { core::arch::x86_64::_rdtsc() };
+    // let start = std::time::Instant::now();
 
     // Start a thread on each core generating testcases per core
     for _ in 0..num_cores {
@@ -48,9 +63,12 @@ fn main() {
         thread::spawn(move || {
             let mut rng = Rng::new();
             loop {
+                let mut buf = Vec::new();
                 let mut depth = 0;
                 // Add the test case to the channel to be read
-                let _ = tx.send(Json::generate(&mut rng, &mut depth));
+                Json::generate(&mut rng, &mut depth, &mut buf);
+
+                let _ = tx.send(buf);
 
                 // Check if we should stop the thread
                 if die.load(Ordering::Acquire) {
@@ -63,19 +81,24 @@ fn main() {
     // No need for the tx channel side anymore since we have no more threads
     drop(tx);
 
-    // Add generated results to a HashSet looking for unique test cases
-    let mut res = HashSet::new();
-    for i in rx.iter() {
-        // Do work on the generated testcases
-        res.insert(i);
+    let mut generated_bytes = 0;
+    let mut counter = 0;
+    for generated_input in rx.iter() {
+        generated_bytes += generated_input.len();
+        counter += 1;
 
-        if res.len() == max_results {
-            break;
+        // let elapsed = start.elapsed();
+        let elapsed = unsafe { core::arch::x86_64::_rdtsc() } - start;
+        if counter & 0xfffff == 0 {
+            print!(
+                // "Time: {:10.4?} / {:10} = {:10.4} MiB/s\n",
+                "Time: {:10.4?} / {:10} = {:10.4} cycle/byte\n",
+                // elapsed.as_secs_f64(),
+                elapsed,
+                generated_bytes,
+                // generated_bytes as f64 / elapsed as f64 / 1000. / 1000.
+                elapsed as f64 / generated_bytes as f64,
+            );
         }
     }
-
-    // Work is done, tell the worker threads to die
-    die.store(true, Ordering::Release);
-
-    print!("{}\n", res.len());
 }
