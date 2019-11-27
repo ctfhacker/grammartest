@@ -215,8 +215,8 @@ impl Generate for Escape {
             1 => {
                 // (["\\/bfnrt]
                 let values = [
-                    '"' as u8, '\\' as u8, '/' as u8, 'b' as u8, 'f' as u8, 'n' as u8, 'r' as u8,
-                    't' as u8,
+                    '"' as u8, '\\' as u8, '/' as u8, 'b' as u8, 
+                    'f' as u8, 'n' as u8, 'r' as u8, 't' as u8,
                 ];
                 buf.push(values[rng.next() as usize % values.len()]);
             }

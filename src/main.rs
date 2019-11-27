@@ -27,7 +27,7 @@ mod rng;
 use rng::Rng;
 
 pub const MAX_REPEAT: usize = 16;
-pub const MAX_DEPTH: u64 = 8;
+pub const MAX_DEPTH: u64 = 128;
 
 /*
 pub trait Generate {
@@ -47,7 +47,7 @@ fn main() {
     let die = Arc::new(AtomicBool::new(false));
 
     // Number threads to start
-    let num_cores = 2;
+    let num_cores = 1;
 
     // Number of results to generate
     let max_results = 10_000_000;
@@ -63,7 +63,7 @@ fn main() {
         thread::spawn(move || {
             let mut rng = Rng::new();
             loop {
-                let mut buf = Vec::new();
+                let mut buf = Vec::with_capacity(MAX_DEPTH as usize * 1024);
                 let mut depth = 0;
                 // Add the test case to the channel to be read
                 Json::generate(&mut rng, &mut depth, &mut buf);
@@ -92,10 +92,10 @@ fn main() {
         if counter & 0xfffff == 0 {
             print!(
                 // "Time: {:10.4?} / {:10} = {:10.4} MiB/s\n",
-                "Time: {:10.4?} / {:10} = {:10.4} cycle/byte\n",
+                "Time: {:10.2?} Mcycle / {:10.2} MB = {:10.4} cycle/byte\n",
                 // elapsed.as_secs_f64(),
-                elapsed,
-                generated_bytes,
+                elapsed as f64 / 1000. / 1000.,
+                generated_bytes as f64 / 1000. / 1000.,
                 // generated_bytes as f64 / elapsed as f64 / 1000. / 1000.
                 elapsed as f64 / generated_bytes as f64,
             );
